@@ -2,17 +2,18 @@ import numpy as np
 
 
 class Agent():
-    def __init__(self, num_actions, actions, alpha, gamma, policy, epsilon=.1):
+    def __init__(self, actions, alpha, gamma, policy, epsilon=.1):
         self.Q = None
         self.r = 0
 
         self.prev_state = None
         self.state = None
         self.action = None
+        self.termination_reached = False
 
         self.actions = actions
 
-        self.num_actions = num_actions
+        self.num_actions = len(actions)
 
         self.alpha = alpha
         self.gamma = gamma
@@ -52,8 +53,17 @@ class Agent():
             env.T[self.actions[self.action]][self.prev_state, :] == 1
         )[0][0]
 
+        if env.states[self.state] == env.SG:
+            self.SG_visited = True
+
     def collect_reward(self, env):
-        self.r = env.pR[self.state]
+        if self.SG_visited:
+            self.r = env.pR[self.state]
+        else:
+            self.r = 0
+
+        if self.r == 1:
+            self.termination_reached = True
 
     def update_Q(self):
         self.Q[self.action, self.prev_state] = \
@@ -62,6 +72,12 @@ class Agent():
                         np.max(self.Q[:, self.state]) -
                         self.Q[self.action, self.prev_state])
 
-    def reset(self):
+    def reset(self, SG_side):
         self.r = 0
-        self.state = 0
+
+        if SG_side is "L":
+            self.state = 0
+        else:
+            self.state = 1
+
+        self.SG_visited = False

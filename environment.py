@@ -2,19 +2,13 @@ import numpy as np
 
 
 class Environment():
-    def __init__(self, num_states, states, state_labels):
-        self.num_states = num_states
+    def __init__(self, states):
         self.states = states
-        self.state_labels = state_labels
+        self.num_states = len(states)
+        self.state_i = np.arange(self.num_states)
 
     def init_T(self, allowable_transitions):
         self.T = {}
-        allowable_transitions = {
-            "NE": [[0, 2], [1, 4], [2, 5], [4, 7]],
-            "SE": [[1, 0], [3, 1], [4, 2], [6, 4]],
-            "SW": [[2, 0], [4, 1], [5, 2], [7, 4]],
-            "NW": [[0, 1], [1, 3], [2, 4], [4, 6]]
-        }
 
         for a in allowable_transitions.keys():
             num_transitions = len(allowable_transitions[a])
@@ -28,4 +22,7 @@ class Environment():
 
     def init_pR(self):
         self.pR = np.zeros(self.num_states)
-        self.pR[-1] = 1
+
+    def place_r(self, SG_side):
+        self.pR[self.states.index("G" + SG_side)] = 1
+        self.SG = "SG" + SG_side
