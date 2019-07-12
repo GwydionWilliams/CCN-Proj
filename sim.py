@@ -10,7 +10,7 @@ policy = "e-greedy"
 
 agent = Agent(num_actions, actions, alpha, gamma, policy)
 
-state_labels = ["B0", "SGL", "SGR", "DL", "B1", "DR", "GL", "GR"]
+state_labels = ["B0L", "B0R", "SGL", "SGR", "DL", "B1", "DR", "GL", "GR"]
 num_states = len(state_labels)
 states = np.arange(num_states)
 
