@@ -1,46 +1,35 @@
 from simulation import Simulation
+from environment import env_builder
 
-reward_mode = "hierarchical"
+mode = "hierarchical"
+alpha = .05
+gamma = .5
+policy = "e-greedy"
+epsilon = .1
+allowable_movements, allowable_transitions = env_builder(mode)
 
-if reward_mode is "hierarchical":
-    agent_params = {
-        "actions": ["NE", "SE", "SW", "NW"],
-        "alpha": .1,
-        "gamma": .5,
-        "policy": "e-greedy",
-        "allowable_movements": {
-            0: [0, 3],
-            1: [0, 3],
-            2: [0, 1, 3],
-            3: [0, 2, 3],
-            4: [1],
-            5: [0, 1, 2, 3],
-            6: [2],
-            7: [1],
-            8: [2],
-        }
-    }
+agent_params = {
+    "actions": ["NE", "SE", "SW", "NW"],
+    "alpha": alpha,
+    "gamma": gamma,
+    "policy": policy,
+    "epsilon": epsilon,
+    "allowable_movements": allowable_movements
+}
 
-    env_params = {
-        "states": ["B0L", "B0R", "SGL", "SGR", "DL", "B1", "DR", "GL", "GR"],
-        "allowable_transitions": {
-            "NE": [[0, 3], [1, 3], [2, 5], [3, 6], [5, 8]],
-            "SE": [[2, 0], [2, 1], [4, 2], [5, 3], [7, 5]],
-            "SW": [[3, 0], [3, 1], [5, 2], [6, 3], [8, 5]],
-            "NW": [[0, 2], [1, 2], [2, 4], [3, 5], [5, 7]]
-        }
-    }
-
-elif reward_mode is "simple":
-
+env_params = {
+    "states": ["B0L", "B0R", "SGL", "SGR", "DL", "B1", "DR", "GL", "GR"],
+    "allowable_transitions": allowable_transitions
+}
 
 num_trials = int(1e5)
 
-sim = Simulation(agent_params, env_params, num_trials)
+sim = Simulation(agent_params, env_params, num_trials, mode)
 
 for sim.n_trial in range(sim.num_trials):
 
     sim.setup_trial()
+    sim.t = 0
 
     while sim.agent.termination_reached is not True:
 

@@ -25,6 +25,7 @@ class Simulation():
 
         self.num_trials = num_trials
 
+        self.reward_mode = reward_mode
         if reward_mode is "hierarchical":
             self.SG_sides = ["L", "R"]
         elif reward_mode is "simple":
@@ -62,18 +63,29 @@ class Simulation():
               )
 
     def norm_Q(self):
-        for s in self.env.state_i:
-            self.agent.Q[:, s] = self.agent.Q[:, s] / sum(self.agent.Q[:, s])
+        self.agent.Q[:, :] = self.agent.Q[:, :] / sum(sum(self.agent.Q[:, :]))
 
     def summarise_trial(self):
         self.n_steps.append(self.t)
         self.mu_steps.append(np.round(np.mean(self.n_steps)))
 
-        print("steps taken this trial: {0}, mean steps taken = {1},\n"
-              "Q(B0L, :) = {3}, \nQ(B0R, :) = {3}, \nQ(B1, :) = {4}".format(
-                  self.t,
-                  self.mu_steps[-1],
-                  np.round(self.agent.Q[:, 0], 3),
-                  np.round(self.agent.Q[:, 1], 3),
-                  np.round(self.agent.Q[:, 5], 3),
-              ))
+        if self.reward_mode is "hierarchical":
+            print("steps taken this trial: {0}, mean steps taken = {1},\n"
+                  "Q(B0L, :) = {2}, \nQ(B0R, :) = {3}, \nQ(B1, :) = {4}".
+                  format(
+                      self.t,
+                      self.mu_steps[-1],
+                      np.round(self.agent.Q[:, 0], 3),
+                      np.round(self.agent.Q[:, 1], 3),
+                      np.round(self.agent.Q[:, 5], 3),
+                  ))
+
+        elif self.reward_mode is "simple":
+            print("steps taken this trial: {0}, mean steps taken = {1},\n"
+                  "Q(B0, :) = {2}, \nQ(B1, :) = {3}".
+                  format(
+                      self.t,
+                      self.mu_steps[-1],
+                      np.round(self.agent.Q[:, 0], 3),
+                      np.round(self.agent.Q[:, 4], 3),
+                  ))
