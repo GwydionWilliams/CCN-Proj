@@ -12,8 +12,6 @@ class Simulation():
             agent_params["policy"]
         )
 
-        print(self.agent.Q)
-
         self.env = Environment(
             env_params["states"]
         )

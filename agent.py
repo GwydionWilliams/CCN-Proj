@@ -3,7 +3,7 @@ import numpy as np
 
 class Agent():
     def __init__(self, actions, alpha, gamma, policy, epsilon=.1):
-        # self.Q = None
+        self.Q = None
         self.pi_active = None
 
         self.r = 0
