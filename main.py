@@ -1,15 +1,23 @@
 from simulation import Simulation
-from environment import env_builder
+from sim_funs import build_env, write_data
 
-mode = "hierarchical"
-alpha = .05
+# -----------------------------------------------------------------------------
+# 1. INITIALISE PARAMETERS ----------------------------------------------------
+#    i.   SIMULATION MODE
+mode = "flat"
+num_trials = int(1)
+
+#    ii.  AGENT & ENVIRONMENT
+actions = ["NE", "SE", "SW", "NW"]
+alpha = .01
 gamma = .5
 policy = "e-greedy"
-epsilon = .1
-allowable_movements, allowable_transitions = env_builder(mode)
+epsilon = .05
+
+states, allowable_movements, allowable_transitions = build_env(mode)
 
 agent_params = {
-    "actions": ["NE", "SE", "SW", "NW"],
+    "actions": actions,
     "alpha": alpha,
     "gamma": gamma,
     "policy": policy,
@@ -18,14 +26,20 @@ agent_params = {
 }
 
 env_params = {
-    "states": ["B0L", "B0R", "SGL", "SGR", "DL", "B1", "DR", "GL", "GR"],
+    "states": states,
     "allowable_transitions": allowable_transitions
 }
 
-num_trials = int(1e5)
+#    iii. DATA
+data_dir = "./data/"
+file_name = "10_MFH-flatEnv"
 
+#    iv. CONTROLLER
 sim = Simulation(agent_params, env_params, num_trials, mode)
 
+
+# -----------------------------------------------------------------------------
+# 2. RUN SIMULATION -----------------------------------------------------------
 for sim.n_trial in range(sim.num_trials):
 
     sim.setup_trial()
@@ -35,13 +49,20 @@ for sim.n_trial in range(sim.num_trials):
 
         sim.agent.select_action()
         sim.agent.move(sim.env)
-        sim.agent.collect_reward(sim.env)
+        sim.agent.collect_reward(sim.env, sim.mode)
         sim.agent.update_Q()
 
         # sim.summarise_step()
 
         sim.t += 1
 
-    sim.norm_Q()
+    sim.record_trial()
 
-    sim.summarise_trial()
+    if sim.n_trial != 0:
+        if ((sim.n_trial % (sim.num_trials / 10)) == 0) or \
+           (sim.n_trial == (sim.num_trials-1)):
+            sim.summarise_chunk()
+
+# -----------------------------------------------------------------------------
+# 3. SAVE RESULTS -------------------------------------------------------------
+write_data(sim, data_dir, file_name)
