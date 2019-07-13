@@ -13,11 +13,12 @@ class Simulation():
         )
 
         self.env = Environment(
-            env_params["states"]
+            env_params["states"],
+            env_params["state_labels"]
         )
 
         self.agent.init_Q(self.env, agent_params["allowable_movements"])
-        self.env.init_T(env_params["allowable_transitions"])
+        # self.env.init_T(env_params["allowable_transitions"])
         self.env.init_pR()
 
         self.num_trials = num_trials
@@ -31,12 +32,14 @@ class Simulation():
         self.num_steps = []
         self.mu_steps = []
 
-        s_initiation = 0
-        s_termination = 4
-        pi = [[3, 0], [0, 1]]
-        Option(pi, s_termination, s_initiation, self.agent)
+        # s_initiation = [0]
+        # s_termination = [4]
+        # pi = [[3, 0], [0, 1]]
+        # o = Option(pi, s_termination, s_initiation, self.agent)
+        # self.agent.add_option(o)
 
     def setup_trial(self):
+        self.agent.pi_active = self.agent.Q
 
         self.agent.termination_reached = False
 

@@ -5,7 +5,7 @@ from sim_funs import build_env, write_data
 # 1. INITIALISE PARAMETERS ----------------------------------------------------
 #    i.   SIMULATION MODE
 mode = "flat"
-num_trials = int(1)
+num_trials = int(1e5)
 
 #    ii.  AGENT & ENVIRONMENT
 actions = ["NE", "SE", "SW", "NW"]
@@ -14,7 +14,7 @@ gamma = .5
 policy = "e-greedy"
 epsilon = .05
 
-states, allowable_movements, allowable_transitions = build_env(mode)
+states, state_labels, allowable_movements = build_env(mode)
 
 agent_params = {
     "actions": actions,
@@ -27,7 +27,7 @@ agent_params = {
 
 env_params = {
     "states": states,
-    "allowable_transitions": allowable_transitions
+    "state_labels": state_labels
 }
 
 #    iii. DATA
@@ -47,10 +47,10 @@ for sim.n_trial in range(sim.num_trials):
 
     while sim.agent.termination_reached is not True:
 
-        sim.agent.select_action()
+        sim.agent.select_action(sim.env)
         sim.agent.move(sim.env)
         sim.agent.collect_reward(sim.env, sim.mode)
-        sim.agent.update_Q()
+        sim.agent.update_Q(sim.env)
 
         # sim.summarise_step()
 
