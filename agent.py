@@ -7,10 +7,13 @@ class Agent():
         self.state = None  # state of the agent in cartesian coords
         self.s_i = 0  # the index of the agent's current state
         self.prev_state = None  # the agent's state at t-1
+        self.state_history = ["BO"]
+        self.origin = None
 
         self.action_lbls = action_lbls  # labels of all primitive actions
         self.num_actions = len(self.action_lbls)  # number of primitive actions
         self.option_lbls = action_lbls  # labels of all available options
+        self.action_history = []
 
         self.r = 0  # the reward experienced by the agent in it's current state
 
@@ -123,6 +126,7 @@ class Agent():
         if self.under_Q_control:
             self.s_init = self.s_i
             self.under_Q_control = False
+            self.update_action_history(choice)
 
         # If the chosen policy corresponds to one of the available primitive
         # actions, the agent needs to initiate movement, which requires setting
@@ -131,6 +135,9 @@ class Agent():
             self.under_primitive_control = True
 
         self.active_policies.append(choice)
+
+    def update_action_history(self, choice):
+        self.action_history.append(self.option_lbls[choice])
 
     def move(self, env):
         '''
@@ -162,16 +169,20 @@ class Agent():
         # z-coordinates correspond to the z given by the arrangement of the
         # current trial:
         if self.state[:2] == [0, 0]:
-            self.state[2] = env.z_start
+            self.state = self.origin
         else:
             self.state[2] = 0
 
         # Find and store the index of the new state:
         self.s_i = find_state(self.state, env)
+        self.update_state_history(env)
 
         # If the new state is a sub-goal, record visitation:
         if find_state(self.state, env, value="label") == env.SG:
             self.SG_visited = True
+
+    def update_state_history(self, env):
+        self.state_history.append(find_state(self.state, env, value="label"))
 
     def check_for_termination(self):
         '''
@@ -252,7 +263,12 @@ class Agent():
 
         self.Q[o, s_prev] = self.Q[o, s_prev] + delta
 
-    def reset(self, SG_side, env):
+        if self.Q[0, 0] == 0:
+            print(self.Q)
+        elif self.Q[3, 0] == 0:
+            print(self.Q)
+
+    def reset(self, SG_side, env, task_mode):
         '''
         Reset the agent prior to the start of a new episode.
 
@@ -262,13 +278,19 @@ class Agent():
         '''
         self.r = 0
 
+        self.action_history = []
+        self.state_history = ["BO"]
+
         self.under_Q_control = True
         self.under_primitive_control = False
 
-        if SG_side is "L":
-            self.state = [0, 0, 0]
+        if task_mode is "hierarchical":
+            if SG_side is "L":
+                self.state = self.origin = [0, 0, 0]
+            else:
+                self.state = self.origin = [0, 0, 1]
         else:
-            self.state = [0, 0, 1]
+            self.state = self.origin = [0, 0, 0]
 
         self.s_i = find_state(self.state, env)
 

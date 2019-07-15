@@ -25,7 +25,7 @@ def build_env(mode):
 def define_primitive_actions(action_lbls, mode):
     s_initiation = {
         action_lbls[0]: [1, 1, 1, 1, 0, 1, 0, 0, 0],
-        action_lbls[1]: [0, 0, 1, 0, 1, 0, 0, 1, 0],
+        action_lbls[1]: [0, 0, 1, 0, 1, 1, 0, 1, 0],
         action_lbls[2]: [0, 0, 0, 1, 0, 1, 1, 0, 1],
         action_lbls[3]: [1, 1, 1, 1, 0, 1, 0, 0, 0]
     }
@@ -60,8 +60,8 @@ def define_options(agent_class, task_mode):
         labels = s_init = s_term = pi = []
     elif agent_class is "hierarchical":
         labels = ["B0_B1_L", "B0_B1_R",
-                  "B0_GL_R", "B0_GR_R",
-                  "B0_GL_A", "B0_GR_A"]
+                  "B0_GL_REP", "B0_GR_REP",
+                  "B0_GL_ALT", "B0_GR_ALT"]
 
         s_init = [
             np.array([1, 1, 0, 0, 0, 0, 0, 0, 0]),
@@ -130,21 +130,29 @@ def define_options(agent_class, task_mode):
 
         if task_mode is "flat":
             for o in range(len(labels)):
-                s_init[o] = s_init[0][1:]
-                s_term[o] = s_term[0][1:]
+                s_init[o] = s_init[o][1:]
+                s_term[o] = s_term[o][1:]
                 pi[o] = pi[o][:, 1:]
 
     return labels, s_init, s_term, pi
 
 
 def write_data(sim, dir_name, file_name):
-    with open(dir_name + "/" + file_name + ".csv", 'w') as writeFile:
+    file_path_csv = dir_name + file_name + ".csv"
+    file_path_Q = dir_name + file_name + "_Q.npy"
+    print("Writing data to {0}...".format(file_path_csv))
+    with open(file_path_csv, 'w') as writeFile:
         writer = csv.writer(writeFile)
 
-        output = [sim.num_steps, sim.mu_steps]
+        output = []
+        for key, item in sim.data.items():
+            output.append(item)
+
         output = zip(*output)
 
         writer.writerows(output)
+
+    np.save(file_path_Q, sim.data_Q)
 
 
 def find_state(state, env, value="index"):

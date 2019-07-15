@@ -6,14 +6,14 @@ from sim_funs import build_env, define_options, write_data
 #    i.   SIMULATION MODE
 sim_params = {
     "num_trials": int(1e5),
-    "task_mode": "hierarchical",
+    "task_mode": "flat",
     "agent_class": "hierarchical",
     "regime": ["repeat", "alternate"]
 }
 
 #    ii.  AGENT & ENVIRONMENT
 action_lbls = ["NE", "SE", "SW", "NW"]
-alpha = .1
+alpha = 0.75
 gamma = .5
 policy = "e-greedy"
 epsilon = .1
@@ -46,7 +46,7 @@ option_params = {
 
 #    iii. DATA
 data_dir = "./data/"
-file_name = "11_MFH-hierEnv"
+file_name = "00_MFH-flatEnv"
 
 #    iv. CONTROLLER
 sim = Simulation(agent_params, env_params, option_params, sim_params)
@@ -65,7 +65,7 @@ for sim.n_trial in range(sim.num_trials):
             sim.agent.select_option(sim.env)
 
         sim.agent.move(sim.env)
-        sim.agent.collect_reward(sim.env, sim.mode)
+        sim.agent.collect_reward(sim.env, sim.task_mode)
         sim.agent.check_for_termination()
         if sim.agent.under_Q_control:
             sim.agent.update_Q(sim.env)

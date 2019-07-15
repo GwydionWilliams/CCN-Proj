@@ -14,7 +14,4 @@ class Environment():
 
     def place_r(self, G_side, SG_side, SG_i):
         self.pR[self.state_lbls.index("G" + G_side)] = 1
-
         self.SG = "SG" + SG_side
-
-        self.z_start = SG_i
