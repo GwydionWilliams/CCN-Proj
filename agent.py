@@ -1,25 +1,21 @@
 import numpy as np
-from sim_funs import find_state
+from sim_funs import find_state, define_primitive_actions
 
 
 class Agent():
-    def __init__(self, actions, alpha, gamma, policy, epsilon=.1):
-        self.Q = None
-        self.pi_active = None
+    def __init__(self, alpha, gamma, action_lbls, policy, epsilon=.1):
+        self.state = None  # state of the agent in cartesian coords
+        self.s_i = 0  # the index of the agent's current state
+        self.prev_state = None  # the agent's state at t-1
 
-        self.r = 0
+        self.action_lbls = action_lbls  # labels of all primitive actions
+        self.num_actions = len(self.action_lbls)  # number of primitive actions
+        self.option_lbls = action_lbls  # labels of all available options
 
-        self.prev_state = None
-        self.state = None
-        self.action = None
-        self.termination_reached = False
+        self.r = 0  # the reward experienced by the agent in it's current state
 
-        self.actions = actions
-
-        self.num_actions = len(actions)
-
-        self.alpha = alpha
-        self.gamma = gamma
+        self.alpha = alpha  # learning rate
+        self.gamma = gamma  # discounting factor
 
         self.selection_policy = policy
         if self.selection_policy == "e-greedy":
@@ -27,100 +23,263 @@ class Agent():
         elif self.selection_policy == "greedy":
             self.epsilon = 0
 
-    def init_Q(self, env, allowable_movements):
-        self.Q = np.zeros((self.num_actions, env.num_states))
+        self.Q = None  # the top-level Q-matrix, which holds Q-values for each
+        # state-option pair (also holds the initiation conditions for each)
+        # option
 
-        for s in range(env.num_states):
-            possible_movements = allowable_movements[s]
-            self.Q[possible_movements, s] = 1  # \
-            # np.round(1/len(possible_movements), 3)
+        self.beta = []  # holds the termination conditions for each option
+        self.o_policies = []  # holds the policy for each option
+        self.active_policies = []  # holds all currently active policies for
+        # all selected options in hierarchical order (i.e., the last item in
+        # the list will be the policy tied to the lowest level currently active
+        # option)
+        self.under_primitive_control = False  # indicates whether the lowest
+        # level active option has direct behavioural control (i.e., is one of
+        # the available primitive actions)
+        self.under_Q_control = True  # indicates whether no options are active,
+        # requiring deferral to the Q-matrix to proceed
 
-        self.pi_active = self.Q
+        self.s_init = None  # hold the value of the state in which the highest
+        # level active option was initiated (for later Q-updating)
+        self.terminated_option = None  # holds the name of the most recently
+        # terminated option (for Q-updating)
+
+        self.termination_reached = False  # indicates whether the agent has
+        # reached a termination state (ie a state in which the episode ends)
+
+    def init_primitive_actions(self, task_mode):
+        '''
+        Initializes the agent's (four) primitive actions (ie NE, SE, SW, NW).
+        These are stored in Q, where each row defines the initiation states of
+        each available action, o_policies, where the first set of option
+        policies are implement the available primitive actions, and beta, which
+        defines the termination conditions of each of the available actions.
+
+        Expects     task_mode - a str indicating the mode of the task (flat or
+                                hierarchical)
+
+        '''
+        s_init, s_term, pi = define_primitive_actions(
+            self.action_lbls, task_mode
+        )
+
+        for a in self.action_lbls:
+            if self.Q is None:
+                self.Q = np.array(s_init[a], dtype=float)
+            else:
+                self.Q = np.vstack((self.Q, s_init[a]))
+
+            self.beta.append(s_term[a])
+
+            self.o_policies.append(pi[a])
 
     def add_option(self, option):
-        Q_o = np.zeros(self.Q.shape[1])
-        for s in option.s_initiation:
-            Q_o[option.s_initiation] = 1
-        self.Q = np.vstack((self.Q, Q_o))
+        '''
+        Adds an option to the agent's repetoir of actions. This includes adding
+        a row to Q (which defines the option's initiation states), a row to
+        beta (which defines the option's termination states), a label to
+        option_lbls, and a policy to o_policies.
 
-    def select_action(self, env):
-        s_i = find_state(self.state, env)
-        choices = self.Q[:, s_i]
+        Expects     option - an object of class Option, which includes s_term,
+                             s_init, pi, and label as properties
 
-        if np.random.random() < self.epsilon:
-            choice = np.random.choice(np.where(choices > 0)[0])
+        '''
+
+        self.Q = np.vstack((self.Q, option.s_init))
+        self.beta.append(option.s_term)
+        self.o_policies.append(option.pi)
+        self.option_lbls.append(option.label)
+
+    def select_option(self, env):
+        '''
+        Selects an option from the policy given by the lowest level currently
+        active option. If no options are currently active, one will be selected
+        from the agent's Q matrix.
+
+        Expects     env - an object of class Environment
+
+        '''
+        if self.under_Q_control:
+            pi = self.Q
         else:
-            choice = np.where(choices == max(choices))[0]
+            pi = self.o_policies[self.active_policies[-1]]
+
+        Q_s_a = pi[:, self.s_i]  # this defines the Q-values held by the agent
+        # for all state-action pairs from it's current state
+
+        if np.random.random() < self.epsilon:  # if under e-greedy, evaluate e
+            choice = np.random.choice(np.where(Q_s_a > 0)[0])
+        else:  # otherwise select the greedy option
+            choice = np.where(Q_s_a == max(Q_s_a))[0]
             if len(choice) > 1:
                 choice = np.random.choice(choice)
             else:
                 choice = choice[0]
-        self.action = choice
 
-        # if choice < 4:
-        #     self.action = choice
-        # else:
-        #     self.pi_active =
+        # If the agent is currently under Q-control, it must store it's current
+        # state in memory such that it can update the value of the chosen
+        # option upon its termination. As such, we store the index of the
+        # current state before setting under_Q_control to False.
+        if self.under_Q_control:
+            self.s_init = self.s_i
+            self.under_Q_control = False
 
-        # if self.action > 4:
+        # If the chosen policy corresponds to one of the available primitive
+        # actions, the agent needs to initiate movement, which requires setting
+        # under_primitive_control to True.
+        if choice < self.num_actions:
+            self.under_primitive_control = True
+
+        self.active_policies.append(choice)
 
     def move(self, env):
-        self.prev_state = self.state[:]
+        '''
+        Moves the agent according to the lowest level (primitive) currently
+        active option.
 
+        Expects     env - an object of class Environment
+
+        '''
+        self.a_i = self.active_policies[-1]  # define the index of the
+        # primitive action given by the currently active primitive option
+        self.prev_state = self.state[:]  # store the current state in memory
+        # for later evaluation
+
+        # Compute and perform the shifts in x and y given by the chosen
+        # primitive action:
         x_shift = 1
-        if self.actions[self.action][1] == "W":
+        if self.action_lbls[self.a_i][1] == "W":
             x_shift *= -1
 
         y_shift = 1
-        if self.actions[self.action][0] == "S":
+        if self.action_lbls[self.a_i][0] == "S":
             y_shift *= -1
 
         self.state[0] += x_shift
         self.state[1] += y_shift
 
+        # If the agent has returned to the origin, ensure that the
+        # z-coordinates correspond to the z given by the arrangement of the
+        # current trial:
+        if self.state[:2] == [0, 0]:
+            self.state[2] = env.z_start
+        else:
+            self.state[2] = 0
+
+        # Find and store the index of the new state:
+        self.s_i = find_state(self.state, env)
+
+        # If the new state is a sub-goal, record visitation:
         if find_state(self.state, env, value="label") == env.SG:
             self.SG_visited = True
 
-    def collect_reward(self, env, mode):
-        s_i = find_state(self.state, env)
+    def check_for_termination(self):
+        '''
+        Checks whether any currently active options should be terminated given
+        movement into a new state and the list of all currently active
+        policies. This occurs by iterating through active_policies in reverse
+        order, as the lowest-level active policies occupy the end of the list,
+        and will be the first to terminate. If a termination condition is
+        satisfied, the method triggers termination by calling
+        terminate_control_policy.
 
-        if mode == "hierarchical":
+        '''
+
+        for o in reversed(self.active_policies):
+            if self.beta[o][self.s_i] == 1:
+                self.terminate_control_policy()
+
+    def terminate_control_policy(self):
+        '''
+        Terminates the lowest level currently active option, and stores its
+        name for later evaluation.
+
+        '''
+
+        self.terminated_option = self.active_policies.pop(-1)
+
+        # If active_policies is empty, control of the agent must pass to Q:
+        if not self.active_policies:
+            self.under_Q_control = True
+            self.under_primitive_control = False
+
+        # If the lowest level currently active policy is non-primitive, a
+        # primitive policy must be sought out:
+        elif self.active_policies[-1] >= self.num_actions:
+            self.under_primitive_control = False
+
+    def collect_reward(self, env, task_mode):
+        '''
+        Collects reward from the environment if available. If the task is
+        hierarchical, reward at the goal location is contingent upon the agent
+        having first visited the sub-goal, and so this must be evaluated prior
+        to award.
+
+        Expects        env - an object of class Environment
+                 task_mode - a str describing the mode of the current task
+
+        '''
+
+        if task_mode == "hierarchical":
             if self.SG_visited:
-                self.r = env.pR[s_i]
+                self.r = env.pR[self.s_i]
             else:
                 self.r = 0
-        elif mode == "flat":
-            self.r = env.pR[s_i]
+        elif task_mode == "flat":
+            self.r = env.pR[self.s_i]
 
         if self.r == 1:
             self.termination_reached = True
 
     def update_Q(self, env):
-        s_prev = find_state(self.prev_state, env)
+        '''
+        Upon termination of all active policies, evaluate the Q-value
+        associated with the highest level and most recently active policy (ie
+        the policy that was terminated prior to control being handed to the
+        Q-matrix) and the state in which it was initiated.
+
+        Expects        env - an object of class Environment
+
+        '''
+
+        s_prev = self.s_init
         s_curr = find_state(self.state, env)
+        o = self.terminated_option
 
-        self.Q[self.action, s_prev] = \
-            self.Q[self.action, s_prev] + \
-            self.alpha*(self.r + self.gamma *
-                        np.max(self.Q[:, s_curr]) -
-                        self.Q[self.action, s_prev])
+        delta = self.alpha*(self.r +
+                            self.gamma * np.max(self.Q[:, s_curr]) -
+                            self.Q[o, s_prev])
 
-    def reset(self, SG_side):
+        self.Q[o, s_prev] = self.Q[o, s_prev] + delta
+
+    def reset(self, SG_side, env):
+        '''
+        Reset the agent prior to the start of a new episode.
+
+        Expects        env - an object of class Environment
+                   SG_side - a str describing the SG-location of the next trial
+
+        '''
         self.r = 0
+
+        self.under_Q_control = True
+        self.under_primitive_control = False
 
         if SG_side is "L":
             self.state = [0, 0, 0]
         else:
             self.state = [0, 0, 1]
 
+        self.s_i = find_state(self.state, env)
+
         self.SG_visited = False
 
 
 class Option():
-    def __init__(self, pi, s_termination, s_initiation, agent):
-        self.s_termination = s_termination
-        self.s_initiation = s_initiation
+    def __init__(self, option_params):
+        self.label = option_params["label"]
 
-        self.pi = np.zeros(agent.Q.shape)
-        for a in pi:
-            self.pi[a[0], a[1]] = 1
+        self.s_init = option_params["s_init"]
+        self.s_term = option_params["s_term"]
+
+        self.pi = option_params["pi"]

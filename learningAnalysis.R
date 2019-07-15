@@ -16,6 +16,8 @@ dh <- read.csv("./data/01_MF-hierENV.csv") %>%
 d <- rbind(df, dh)
 
 p1 <- ggplot(d, aes(x=log(episode), y=steps, colour=env)) +
-    geom_smooth()
+    geom_line() +
+    transition_reveal(log(episode))
 
 ggsave("./plots/MF.png", p1)
+anim_save("./plots/MF.gif", p1))
