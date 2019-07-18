@@ -15,7 +15,8 @@ class Simulation():
             agent_params["alpha"],
             agent_params["gamma"],
             agent_params["action_lbls"],
-            agent_params["policy"]
+            agent_params["policy"],
+            agent_params["epsilon"]
         )
         self.agent.init_primitive_actions(self.task_mode)
 
@@ -93,6 +94,7 @@ class Simulation():
 
     def switch_regime(self):
         self.active_regime = self.regimes[1]
+        self.agent.step_counter = 0
         print("---------------------------- REGIME SWITCH --------------------"
               "--------")
 

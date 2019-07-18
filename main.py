@@ -6,7 +6,7 @@ from sim_funs import build_env, define_options, write_data
 #    i.   SIMULATION MODE
 sim_params = {
     "num_trials": int(1e5),
-    "task_mode": "flat",
+    "task_mode": "hierarchical",
     "agent_class": "hierarchical",
     "regime": ["repeat", "alternate"]
 }
@@ -16,7 +16,11 @@ action_lbls = ["NE", "SE", "SW", "NW"]
 alpha = 0.75
 gamma = .5
 policy = "e-greedy"
-epsilon = .1
+epsilon = {
+    "start": 0.5,
+    "end": 0.0005,
+    "decay": 100
+}
 
 states, state_labels = build_env(sim_params["task_mode"])
 labels, s_init, s_term, pi = define_options(
@@ -46,7 +50,7 @@ option_params = {
 
 #    iii. DATA
 data_dir = "./data/"
-file_name = "00_MFH-flatEnv"
+file_name = "11_MFH-hierEnv"
 
 #    iv. CONTROLLER
 sim = Simulation(agent_params, env_params, option_params, sim_params)

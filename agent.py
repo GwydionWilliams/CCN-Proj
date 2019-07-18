@@ -3,7 +3,7 @@ from sim_funs import find_state, define_primitive_actions
 
 
 class Agent():
-    def __init__(self, alpha, gamma, action_lbls, policy, epsilon=.1):
+    def __init__(self, alpha, gamma, action_lbls, policy, epsilon):
         self.state = None  # state of the agent in cartesian coords
         self.s_i = 0  # the index of the agent's current state
         self.prev_state = None  # the agent's state at t-1
@@ -22,9 +22,14 @@ class Agent():
 
         self.selection_policy = policy
         if self.selection_policy == "e-greedy":
-            self.epsilon = epsilon
+            self.e_start = epsilon["start"]
+            self.e_end = epsilon["end"]
+            self.e_decay = epsilon["decay"]
         elif self.selection_policy == "greedy":
-            self.epsilon = 0
+            self.e_start = 0
+            self.e_end = 0
+            self.e_decay = 0
+        self.step_counter = 0
 
         self.Q = None  # the top-level Q-matrix, which holds Q-values for each
         # state-option pair (also holds the initiation conditions for each)
@@ -102,6 +107,9 @@ class Agent():
         Expects     env - an object of class Environment
 
         '''
+        e_threshold = self.e_end + (self.e_start - self.e_end) * \
+            np.exp(-1. * self.step_counter / self.e_decay)
+
         if self.under_Q_control:
             pi = self.Q
         else:
@@ -110,7 +118,7 @@ class Agent():
         Q_s_a = pi[:, self.s_i]  # this defines the Q-values held by the agent
         # for all state-action pairs from it's current state
 
-        if np.random.random() < self.epsilon:  # if under e-greedy, evaluate e
+        if np.random.random() < e_threshold:  # if under e-greedy, evaluate e
             choice = np.random.choice(np.where(Q_s_a > 0)[0])
         else:  # otherwise select the greedy option
             choice = np.where(Q_s_a == max(Q_s_a))[0]
@@ -180,6 +188,8 @@ class Agent():
         # If the new state is a sub-goal, record visitation:
         if find_state(self.state, env, value="label") == env.SG:
             self.SG_visited = True
+
+        self.step_counter += 1
 
     def update_state_history(self, env):
         self.state_history.append(find_state(self.state, env, value="label"))
