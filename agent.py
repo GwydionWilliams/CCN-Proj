@@ -3,10 +3,12 @@ from sim_funs import find_state, define_primitive_actions
 
 
 class Agent():
-    def __init__(self, alpha, gamma, action_lbls, policy, epsilon):
+    def __init__(self, alpha, gamma, action_lbls, policy, epsilon, has_history):
         self.state = None  # state of the agent in cartesian coords
         self.s_i = 0  # the index of the agent's current state
-        self.prev_state = None  # the agent's state at t-1
+        self.s_prev = self.state  # the agent's state at t-1
+        self.s_hist = self.state  # the agent's state at t-2
+        self.has_history = has_history
         self.state_history = ["BO"]
         self.origin = None
 
@@ -81,6 +83,13 @@ class Agent():
 
             self.o_policies.append(pi[a])
 
+    def endow_history(self, num_states):
+        full_Q = []
+        for i in range(num_states):
+            full_Q.append(self.Q[:])
+
+        self.Q = np.array(full_Q)
+
     def add_option(self, option):
         '''
         Adds an option to the agent's repetoir of actions. This includes adding
@@ -111,7 +120,10 @@ class Agent():
             np.exp(-1. * self.step_counter / self.e_decay)
 
         if self.under_Q_control:
-            pi = self.Q
+            if self.has_history:
+                pi = self.Q[find_state(self.s_prev, env), :, :]
+            else:
+                pi = self.Q
         else:
             pi = self.o_policies[self.active_policies[-1]]
 
@@ -157,11 +169,13 @@ class Agent():
         '''
         self.a_i = self.active_policies[-1]  # define the index of the
         # primitive action given by the currently active primitive option
-        self.prev_state = self.state[:]  # store the current state in memory
-        # for later evaluation
 
         # Compute and perform the shifts in x and y given by the chosen
         # primitive action:
+        if not np.array_equal(self.s_prev, self.state):
+            self.s_hist = self.s_prev[:]
+        self.s_prev = self.state[:]
+
         x_shift = 1
         if self.action_lbls[self.a_i][1] == "W":
             x_shift *= -1
@@ -262,21 +276,33 @@ class Agent():
         Expects        env - an object of class Environment
 
         '''
-
-        s_prev = self.s_init
-        s_curr = find_state(self.state, env)
+        s_hist = find_state(self.s_hist, env)
+        s_prev = find_state(self.s_prev, env)
+        s = find_state(self.state, env)
         o = self.terminated_option
 
-        delta = self.alpha*(self.r +
-                            self.gamma * np.max(self.Q[:, s_curr]) -
-                            self.Q[o, s_prev])
+        # print("UPDATING ACTION {0}, STATE {1}, HISTORY {2}".format(
+        #     self.action_lbls[o], s_prev, s_hist
+        # ))
 
-        self.Q[o, s_prev] = self.Q[o, s_prev] + delta
+        if self.has_history:
+            delta = self.alpha*(self.r +
+                                self.gamma * np.max(
+                                    self.Q[s_prev, :, s]) -
+                                self.Q[s_hist, o, s_prev])
 
-        if self.Q[0, 0] == 0:
-            print(self.Q)
-        elif self.Q[3, 0] == 0:
-            print(self.Q)
+            self.Q[s_hist, o, s_prev] += delta
+            #
+            # print(np.round(self.Q[:, :, :], 4))
+            # print("------------------------------------------------")
+            # print(s_hist, o, self.s_prev)
+
+        else:
+            delta = self.alpha*(self.r +
+                                self.gamma * np.max(self.Q[:, s]) -
+                                self.Q[o, self.s_prev])
+
+            self.Q[o, self.s_prev] += delta
 
     def reset(self, SG_side, env, task_mode):
         '''
@@ -290,6 +316,7 @@ class Agent():
 
         self.action_history = []
         self.state_history = ["BO"]
+        self.s_prev = 0
 
         self.under_Q_control = True
         self.under_primitive_control = False
@@ -303,6 +330,8 @@ class Agent():
             self.state = self.origin = [0, 0, 0]
 
         self.s_i = find_state(self.state, env)
+        self.s_prev = self.state[:]
+        self.s_hist = self.state[:]
 
         self.SG_visited = False
 

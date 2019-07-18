@@ -16,7 +16,8 @@ class Simulation():
             agent_params["gamma"],
             agent_params["action_lbls"],
             agent_params["policy"],
-            agent_params["epsilon"]
+            agent_params["epsilon"],
+            agent_params["has_history"],
         )
         self.agent.init_primitive_actions(self.task_mode)
 
@@ -27,6 +28,8 @@ class Simulation():
                 o[key] = value[n]
             option = Option(o)
             self.agent.add_option(option)
+        if self.agent.has_history:
+            self.agent.endow_history(len(env_params["states"]))
 
         self.env = Environment(
             env_params["states"],
@@ -47,11 +50,19 @@ class Simulation():
             "state_history": []
         }
 
-        self.data_Q = np.zeros(
-            (num_options + self.agent.num_actions,
-             len(env_params["states"]),
-             sim_params["num_trials"])
-        )
+        if self.agent.has_history:
+            self.data_Q = np.zeros(
+                (len(env_params["states"]),
+                 num_options + self.agent.num_actions,
+                 len(env_params["states"]),
+                 sim_params["num_trials"])
+            )
+        else:
+            self.data_Q = np.zeros(
+                (num_options + self.agent.num_actions,
+                 len(env_params["states"]),
+                 sim_params["num_trials"])
+            )
 
     def setup_trial(self):
         self.agent.termination_reached = False
@@ -90,7 +101,10 @@ class Simulation():
         self.data["action_history"].append("-".join(self.agent.action_history))
         self.data["state_history"].append("-".join(self.agent.state_history))
 
-        self.data_Q[:, :, self.n_trial] = self.agent.Q
+        if self.agent.has_history:
+            self.data_Q[:, :, :, self.n_trial] = self.agent.Q
+        else:
+            self.data_Q[:, :, self.n_trial] = self.agent.Q
 
     def switch_regime(self):
         self.active_regime = self.regimes[1]
@@ -137,38 +151,85 @@ class Simulation():
 
     def summarise_chunk(self):
         if self.task_mode is "flat":
-            print("-----------------------------------------------------------"
-                  "------------\n"
-                  "        trial num = {0}\n"
-                  " mean steps taken = {1}\n"
-                  "         Q(B0, :) = {2}\n"
-                  "        Q(SGL, :) = {3}\n"
-                  "        Q(SGR, :) = {4}\n"
-                  "         Q(B1, :) = {5}\n"
-                  "-----------------------------------------------------------"
-                  "------------".format(
-                      self.n_trial, self.data["mu_steps"][-1],
-                      np.round(self.agent.Q[:, 0], 2),
-                      np.round(self.agent.Q[:, 1], 2),
-                      np.round(self.agent.Q[:, 2], 2),
-                      np.round(self.agent.Q[:, 4], 2))
-                  )
+            if self.agent.has_history:
+                print("-------------------------------------------------------"
+                      "----------------\n"
+                      "        trial num = {0}\n"
+                      " mean steps taken = {1}\n"
+                      "     Q(B0, B0, :) = {2}\n"
+                      "    Q(B0, SGL, :) = {3}\n"
+                      "    Q(B0, SGR, :) = {4}\n"
+                      "    Q(SGL, B1, :) = {5}\n"
+                      "    Q(SGR, B1, :) = {6}\n"
+                      "-------------------------------------------------------"
+                      "-----------------".format(
+                          self.n_trial, self.data["mu_steps"][-1],
+                          np.round(self.agent.Q[0, :, 0], 2),
+                          np.round(self.agent.Q[0, :, 1], 2),
+                          np.round(self.agent.Q[0, :, 2], 2),
+                          np.round(self.agent.Q[1, :, 4], 2),
+                          np.round(self.agent.Q[2, :, 4], 2))
+                      )
+            else:
+                print("-------------------------------------------------------"
+                      "----------------\n"
+                      "        trial num = {0}\n"
+                      " mean steps taken = {1}\n"
+                      "         Q(B0, :) = {2}\n"
+                      "        Q(SGL, :) = {3}\n"
+                      "        Q(SGR, :) = {4}\n"
+                      "         Q(B1, :) = {5}\n"
+                      "-------------------------------------------------------"
+                      "-----------------".format(
+                          self.n_trial, self.data["mu_steps"][-1],
+                          np.round(self.agent.Q[:, 0], 2),
+                          np.round(self.agent.Q[:, 1], 2),
+                          np.round(self.agent.Q[:, 2], 2),
+                          np.round(self.agent.Q[:, 4], 2))
+                      )
         elif self.task_mode is "hierarchical":
-            print("-----------------------------------------------------------"
-                  "------------\n"
-                  "        trial num = {0}\n"
-                  " mean steps taken = {1}\n"
-                  "        Q(B0L, :) = {2}\n"
-                  "        Q(B0R, :) = {3}\n"
-                  "        Q(SGL, :) = {4}\n"
-                  "        Q(SGR, :) = {5}\n"
-                  "         Q(B1, :) = {6}\n"
-                  "-----------------------------------------------------------"
-                  "------------".format(
-                      self.n_trial, self.data["mu_steps"][-1],
-                      np.round(self.agent.Q[:, 0], 2),
-                      np.round(self.agent.Q[:, 1], 2),
-                      np.round(self.agent.Q[:, 2], 2),
-                      np.round(self.agent.Q[:, 3], 2),
-                      np.round(self.agent.Q[:, 5], 2))
-                  )
+            if self.agent.has_history:
+                print("------------------------------------------------------"
+                      "-----------------\n"
+                      "        trial num = {0}\n"
+                      " mean steps taken = {1}\n"
+                      "     Q(0, B0L, :) = {2}\n"
+                      "     Q(0, B0R, :) = {3}\n"
+                      "   Q(B0L, SGL, :) = {4}\n"
+                      "   Q(B0R, SGL, :) = {5}\n"
+                      "   Q(B0L, SGR, :) = {6}\n"
+                      "   Q(B0R, SGR, :) = {7}\n"
+                      "    Q(SGL, B1, :) = {8}\n"
+                      "    Q(SGR, B1, :) = {9}\n"
+                      "-------------------------------------------------------"
+                      "----------------".format(
+                          self.n_trial, self.data["mu_steps"][-1],
+                          np.round(self.agent.Q[0, :, 0], 2),
+                          np.round(self.agent.Q[1, :, 1], 2),
+                          np.round(self.agent.Q[0, :, 2], 2),
+                          np.round(self.agent.Q[1, :, 2], 2),
+                          np.round(self.agent.Q[0, :, 3], 2),
+                          np.round(self.agent.Q[1, :, 3], 2),
+                          np.round(self.agent.Q[2, :, 5], 2),
+                          np.round(self.agent.Q[3, :, 5], 2))
+                      )
+                # print(np.round(self.agent.Q[:, :, :], 4))
+            else:
+                print("-------------------------------------------------------"
+                      "----------------\n"
+                      "        trial num = {0}\n"
+                      " mean steps taken = {1}\n"
+                      "        Q(B0L, :) = {2}\n"
+                      "        Q(B0R, :) = {3}\n"
+                      "        Q(SGL, :) = {4}\n"
+                      "        Q(SGR, :) = {5}\n"
+                      "         Q(B1, :) = {6}\n"
+                      "-------------------------------------------------------"
+                      "----------------".format(
+                          self.n_trial, self.data["mu_steps"][-1],
+                          np.round(self.agent.Q[:, 0], 2),
+                          np.round(self.agent.Q[:, 1], 2),
+                          np.round(self.agent.Q[:, 2], 2),
+                          np.round(self.agent.Q[:, 3], 2),
+                          np.round(self.agent.Q[:, 5], 2))
+                      )

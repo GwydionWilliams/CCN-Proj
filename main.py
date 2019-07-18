@@ -5,11 +5,15 @@ from sim_funs import build_env, define_options, write_data
 # 1. INITIALISE PARAMETERS ----------------------------------------------------
 #    i.   SIMULATION MODE
 sim_params = {
-    "num_trials": int(1e5),
-    "task_mode": "hierarchical",
-    "agent_class": "hierarchical",
+    "num_trials": int(2e4),
+    "task_mode": "flat",
+    "agent_class": "flat",
+    "agent_represents_history": True,
     "regime": ["repeat", "alternate"]
 }
+
+data_dir = "./data/"
+file_name = "10-MFFH-hierEnv"
 
 #    ii.  AGENT & ENVIRONMENT
 action_lbls = ["NE", "SE", "SW", "NW"]
@@ -19,7 +23,7 @@ policy = "e-greedy"
 epsilon = {
     "start": 0.5,
     "end": 0.0005,
-    "decay": 100
+    "decay": 200
 }
 
 states, state_labels = build_env(sim_params["task_mode"])
@@ -33,7 +37,8 @@ agent_params = {
     "action_lbls": action_lbls,
     "policy": policy,
     "epsilon": epsilon,
-    "agent_class": sim_params["agent_class"]
+    "agent_class": sim_params["agent_class"],
+    "has_history": sim_params["agent_represents_history"]
 }
 
 env_params = {
@@ -47,10 +52,6 @@ option_params = {
     "s_term": s_term,
     "pi": pi,
 }
-
-#    iii. DATA
-data_dir = "./data/"
-file_name = "11_MFH-hierEnv"
 
 #    iv. CONTROLLER
 sim = Simulation(agent_params, env_params, option_params, sim_params)
