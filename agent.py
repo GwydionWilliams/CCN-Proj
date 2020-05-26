@@ -172,7 +172,7 @@ class Agent():
 
         # Compute and perform the shifts in x and y given by the chosen
         # primitive action:
-        if not np.array_equal(self.s_prev, self.state):
+        if (not np.array_equal(self.s_prev, self.state)) and (self.has_history):
             self.s_hist = self.s_prev[:]
         self.s_prev = self.state[:]
 
@@ -191,7 +191,7 @@ class Agent():
         # z-coordinates correspond to the z given by the arrangement of the
         # current trial:
         if self.state[:2] == [0, 0]:
-            self.state = self.origin
+            self.state = self.origin[:]
         else:
             self.state[2] = 0
 
@@ -281,10 +281,6 @@ class Agent():
         s = find_state(self.state, env)
         o = self.terminated_option
 
-        # print("UPDATING ACTION {0}, STATE {1}, HISTORY {2}".format(
-        #     self.action_lbls[o], s_prev, s_hist
-        # ))
-
         if self.has_history:
             delta = self.alpha*(self.r +
                                 self.gamma * np.max(
@@ -292,17 +288,16 @@ class Agent():
                                 self.Q[s_hist, o, s_prev])
 
             self.Q[s_hist, o, s_prev] += delta
-            #
-            # print(np.round(self.Q[:, :, :], 4))
-            # print("------------------------------------------------")
-            # print(s_hist, o, self.s_prev)
 
         else:
+            if len(self.option_lbls) > 4:
+                s_prev = self.s_init
+
             delta = self.alpha*(self.r +
                                 self.gamma * np.max(self.Q[:, s]) -
-                                self.Q[o, self.s_prev])
+                                self.Q[o, s_prev])
 
-            self.Q[o, self.s_prev] += delta
+            self.Q[o, s_prev] += delta
 
     def reset(self, SG_side, env, task_mode):
         '''
@@ -323,9 +318,11 @@ class Agent():
 
         if task_mode is "hierarchical":
             if SG_side is "L":
-                self.state = self.origin = [0, 0, 0]
+                self.state = [0, 0, 0]
+                self.origin = [0, 0, 0]
             else:
-                self.state = self.origin = [0, 0, 1]
+                self.state = [0, 0, 1]
+                self.origin = [0, 0, 1]
         else:
             self.state = self.origin = [0, 0, 0]
 

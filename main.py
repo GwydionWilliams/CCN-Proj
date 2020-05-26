@@ -6,24 +6,24 @@ from sim_funs import build_env, define_options, write_data
 #    i.   SIMULATION MODE
 sim_params = {
     "num_trials": int(2e4),
-    "task_mode": "flat",
+    "task_mode": "hierarchical",
     "agent_class": "flat",
-    "agent_represents_history": True,
+    "agent_represents_history": False,
     "regime": ["repeat", "alternate"]
 }
 
 data_dir = "./data/"
-file_name = "10-MFFH-hierEnv"
+file_name = "01-MFH0-hierEnv-LLR"
 
 #    ii.  AGENT & ENVIRONMENT
 action_lbls = ["NE", "SE", "SW", "NW"]
-alpha = 0.75
+alpha = 0.075
 gamma = .5
 policy = "e-greedy"
 epsilon = {
     "start": 0.5,
-    "end": 0.0005,
-    "decay": 200
+    "end": 0.1,
+    "decay": 100
 }
 
 states, state_labels = build_env(sim_params["task_mode"])

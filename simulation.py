@@ -43,8 +43,8 @@ class Simulation():
         self.data = {
             "num_steps": [],
             "mu_steps": [],
-            "goal_side": [],
             "sub_goal_side": [],
+            "goal_side": [],
             "regime": [],
             "action_history": [],
             "state_history": []
